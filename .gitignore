@@ -1,0 +1,9 @@
+node_modules/
+.eye/*
+!.eye/cache.json
+
+.env*
+
+.DS_Store
+
+*.db

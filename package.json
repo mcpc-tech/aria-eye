@@ -1,0 +1,41 @@
+{
+  "name": "accessibility",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "browser": "/Applications/Google\\ Chrome\\ Canary.app/Contents/MacOS/Google\\ Chrome\\ Canary --remote-debugging-port=9222 --user-data-dir=/tmp/chrome_debug > /dev/null 2>&1 &",
+    "eye": "npm run browser && sleep 3 && tsx src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "axe-core": "^4.10.3",
+    "esbuild": "^0.25.1",
+    "jsdom": "^26.0.0",
+    "puppeteer": "^24.10.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^1.2.1",
+    "@ai-sdk/openai": "^1.2.5",
+    "@huggingface/transformers": "^3.4.0",
+    "@openrouter/ai-sdk-provider": "^0.4.3",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-node": "^4.22.0",
+    "@tensorflow/tfjs-node-gpu": "^4.22.0",
+    "@types/node": "^22.13.10",
+    "ai": "^4.1.62",
+    "es-toolkit": "^1.39.3",
+    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^1.5.8",
+    "mem0ai": "^2.1.30",
+    "optional": "^0.1.4",
+    "sharp": "^0.33.5",
+    "zod": "^3.24.2"
+  }
+}
