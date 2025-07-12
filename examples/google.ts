@@ -54,6 +54,8 @@ async function main() {
     return ele?.click();
   });
 
+  await page.waitForNavigation({ waitUntil: "networkidle2" });
+
   await eye.look("Model Context Protocol heading, level 3").then((ele) => {
     return ele?.click();
   });

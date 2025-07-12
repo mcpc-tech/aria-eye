@@ -36,11 +36,12 @@ export const parseA11yRef = (memory: string) => {
 export const a11yRefSelect = async (
   { evaluate, evaluateHandle }: EyeEvalProps,
   ref: string,
-  highlight = true,
-  duration = 3000
+  highlight = true
 ) => {
   const handle = await evaluateHandle((ref) => {
-    return window._a11y._lastAriaSnapshot?.elements?.get(ref);
+    const element = window._a11y._lastAriaSnapshot?.elements?.get(ref);
+    console.log("Selecting element by ref:", ref, element);
+    return element;
   }, ref);
 
   const isNull = await handle.evaluate((obj) => obj == null);
@@ -51,20 +52,26 @@ export const a11yRefSelect = async (
   }
 
   if (highlight) {
-    await highlightElement({ evaluate }, handle, duration);
+    await highlightElement({ evaluate }, handle, ref);
   }
 
   return handle;
 };
+
 export const highlightElement = async (
   { evaluate }: EyeEvalProps,
   elementHandle: any,
-  duration: number
+  ref: string
 ) => {
+  // Instead of passing the elementHandle into the page context, just pass the ref.
   await evaluate(
-    ({ elementHandle, duration }) => {
-      if (!elementHandle) return;
+    (ref) => {
+      // Look up the element by ref inside the page context.
+      const element =
+        window._a11y?._lastAriaSnapshot?.elements?.get(ref)
+      if (!element) return;
 
+      // Remove existing overlay and container if they exist
       const existingOverlay = document.getElementById("a11y-highlight-overlay");
       const existingContainer = document.getElementById(
         "a11y-highlight-container"
@@ -77,6 +84,7 @@ export const highlightElement = async (
         existingContainer.remove();
       }
 
+      // Create semi-transparent overlay covering the entire viewport
       const overlay = document.createElement("div");
       overlay.id = "a11y-highlight-overlay";
       overlay.style.cssText = `
@@ -85,97 +93,90 @@ export const highlightElement = async (
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-color: rgba(0, 0, 0, 0.5);
+        background: rgba(0,0,0,0.25);
         z-index: 9998;
         pointer-events: none;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.25s;
       `;
 
+      // Create highlight container for the target element
       const highlightContainer = document.createElement("div");
       highlightContainer.id = "a11y-highlight-container";
+
+      // Get element's bounding rectangle relative to viewport
+      const rect = element.getBoundingClientRect();
+
+      // Get current scroll position
+      const scrollLeft =
+        window.pageXOffset || document.documentElement.scrollLeft;
+      const scrollTop =
+        window.pageYOffset || document.documentElement.scrollTop;
+
+      // Calculate element's absolute position relative to document
+      const elementLeft = rect.left + scrollLeft;
+      const elementTop = rect.top + scrollTop;
+
+      // Position highlight container exactly around the element
       highlightContainer.style.cssText = `
-        position: fixed;
+        position: absolute;
+        left: ${elementLeft}px;
+        top: ${elementTop}px;
+        width: ${rect.width}px;
+        height: ${rect.height}px;
         z-index: 9999;
         pointer-events: none;
         opacity: 0;
-        transition: all 0.3s ease;
+        transition: opacity 0.25s;
       `;
 
-      const rect = elementHandle.getBoundingClientRect();
-      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
-      highlightContainer.style.left = `${rect.left + scrollX - 8}px`;
-      highlightContainer.style.top = `${rect.top + scrollY - 8}px`;
-      highlightContainer.style.width = `${rect.width + 8}px`;
-      highlightContainer.style.height = `${rect.height + 8}px`;
-
+      // Create the visual highlight border with glow effect
       const highlightBorder = document.createElement("div");
       highlightBorder.style.cssText = `
         width: 100%;
         height: 100%;
-        border: 3px solid #ff6b6b;
-        border-radius: 4px;
-        box-shadow: 
-          0 0 0 1px rgba(255, 255, 255, 0.8),
-          0 0 20px rgba(255, 107, 107, 0.6),
-          inset 0 0 20px rgba(255, 107, 107, 0.1);
-        animation: a11yPulse 1.5s ease-in-out infinite alternate;
+        border: 3px solid #ff3366;
+        border-radius: 8px;
+        box-shadow: 0 0 16px 4px #ff3366aa;
+        background: transparent;
       `;
 
+      // Create label to identify the highlighted element
       const label = document.createElement("div");
       label.style.cssText = `
         position: absolute;
-        top: -30px;
+        top: -28px;
         left: 0;
-        background: #ff6b6b;
-        color: white;
-        padding: 4px 8px;
+        background: #ff3366;
+        color: #fff;
+        padding: 2px 8px;
         border-radius: 4px;
-        font-size: 12px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 13px;
+        font-family: inherit;
         white-space: nowrap;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 2px 8px #ff336688;
+        letter-spacing: 0.5px;
       `;
-      label.textContent = "A11Y Element";
+      label.textContent = `[ref=${ref}]`;
 
-      if (!document.getElementById("a11y-highlight-styles")) {
-        const style = document.createElement("style");
-        style.id = "a11y-highlight-styles";
-        style.textContent = `
-          @keyframes a11yPulse {
-            0% { 
-              box-shadow: 
-                0 0 0 1px rgba(255, 255, 255, 0.8),
-                0 0 20px rgba(255, 107, 107, 0.6),
-                inset 0 0 20px rgba(255, 107, 107, 0.1);
-            }
-            100% { 
-              box-shadow: 
-                0 0 0 1px rgba(255, 255, 255, 0.8),
-                0 0 30px rgba(255, 107, 107, 0.8),
-                inset 0 0 30px rgba(255, 107, 107, 0.2);
-            }
-          }
-        `;
-        document.head.appendChild(style);
-      }
-
+      // Assemble the highlight components
       highlightContainer.appendChild(highlightBorder);
       highlightContainer.appendChild(label);
       document.body.appendChild(overlay);
       document.body.appendChild(highlightContainer);
 
+      // Fade in the highlight elements
       requestAnimationFrame(() => {
         overlay.style.opacity = "1";
         highlightContainer.style.opacity = "1";
       });
 
+      // Auto-remove highlight after 1 second with fade out
       setTimeout(() => {
         overlay.style.opacity = "0";
         highlightContainer.style.opacity = "0";
 
+        // Remove elements after fade out transition completes
         setTimeout(() => {
           if (overlay.parentNode) {
             overlay.remove();
@@ -184,8 +185,8 @@ export const highlightElement = async (
             highlightContainer.remove();
           }
         }, 300);
-      }, duration);
+      }, 1000);
     },
-    { elementHandle, duration }
+    ref
   );
 };

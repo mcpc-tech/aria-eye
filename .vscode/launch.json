@@ -15,6 +15,21 @@
       ],
       "runtimeArgs": ["--inspect"],
       "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug server.ts",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "src/server/server.ts",
+      "runtimeExecutable": "tsx",
+      "sourceMaps": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/**",
+        "!**/node_modules/**"
+      ],
+      "runtimeArgs": ["--inspect"],
+      "console": "integratedTerminal"
     }
   ]
 }
