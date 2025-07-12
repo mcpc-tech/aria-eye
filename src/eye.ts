@@ -96,15 +96,13 @@ export const createEye = async ({ platform }: EyeProps) => {
   }
 
   const { evaluate, evaluateHandle } = getEvaluationAdapter(platform);
+  
   const a11yMemo = async () => {
-    await injectA11y(evaluate);
-
     const a11yTree = await evaluate(() => {
       return JSON.parse(
         window._a11y.ariaSnapshotJSON(document.documentElement, { forAI: true })
       );
     });
-
     await syncA11yMemoryFromTree(a11yTree);
   };
 
@@ -116,6 +114,7 @@ export const createEye = async ({ platform }: EyeProps) => {
       target: string,
       similarityThreshold: number = 0.6
     ): Promise<ElementHandle> {
+      await injectA11y(evaluate);
       const { results } = await queryElementsByDescription(a11yMemo, target);
       const element = results?.[0];
       if (element.score < similarityThreshold) {
@@ -135,6 +134,7 @@ export const createEye = async ({ platform }: EyeProps) => {
      * Wait for an element matching the description to appear
      */
     async wait(description: string, similarityThreshold = 0.8) {
+      await injectA11y(evaluate);
       const results = await waitElementByDescription(a11yMemo, description, {
         similarityThreshold,
       });
