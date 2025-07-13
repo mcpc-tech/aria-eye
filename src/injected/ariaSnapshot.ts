@@ -112,7 +112,9 @@ export function generateAriaTree(
 
     const childAriaNode = toAriaNode(element, options);
     if (childAriaNode) {
-      if (childAriaNode.ref) snapshot.elements.set(childAriaNode.ref, element);
+      if (childAriaNode.ref) {
+        snapshot.elements.set(childAriaNode.ref, element);
+      }
       ariaNode.children.push(childAriaNode);
     }
     processElement(childAriaNode || ariaNode, element, ariaChildren);
@@ -557,42 +559,61 @@ export function renderAriaTreeAsJSON(
   ariaSnapshot: AriaSnapshot,
   options?: { mode?: "raw" | "regex"; forAI?: boolean }
 ): string {
+  // Determine if text nodes should be included based on the mode.
+  // In 'regex' mode, textContributesInfo function is used to decide.
+  // Otherwise, all text nodes are included.
   const includeText =
     options?.mode === "regex" ? textContributesInfo : () => true;
+
+  // Determine the string rendering function based on the mode.
+  // In 'regex' mode, convertToBestGuessRegex is used to transform strings.
+  // Otherwise, strings are rendered as-is.
   const renderString =
     options?.mode === "regex" ? convertToBestGuessRegex : (str: string) => str;
 
-  // Internal helper to build the JSON-like object structure
+  /**
+   * Recursively builds a JSON-like object structure from an AriaNode or a string (text node).
+   * This function mirrors the logic of the original renderAriaTree to ensure consistency
+   * in what information is extracted and under what conditions, but formats it for JSON.
+   *
+   * @param ariaNode The current AriaNode or string to process.
+   * @param parentAriaNode The parent AriaNode, used for context (e.g., for includeText).
+   * @returns A JSON-compatible object representing the Aria node, or null if skipped.
+   */
   const buildJsonObject = (
     ariaNode: AriaNode | string,
     parentAriaNode: AriaNode | null
   ): any => {
+    // Handle text nodes (string type)
     if (typeof ariaNode === "string") {
+      // Check if the text node should be included based on parent context and mode.
       if (parentAriaNode && !includeText(parentAriaNode, ariaNode)) {
-        return null; // Skip text node based on includeText logic
+        return null; // Skip text node if includeText returns false.
       }
-      const text = renderString(ariaNode);
+      const text = renderString(ariaNode); // Render the text string.
       if (text) {
-        return { text: text }; // Represent text as an object { text: "..." }
+        return { text: text }; // Represent text as an object { text: "..." } for clarity in JSON.
       }
-      return null; // Skip empty text node
+      return null; // Skip empty text node after rendering.
     }
 
-    // Handle AriaNode
+    // Handle AriaNode (object type)
     const jsonNode: any = {
-      role: ariaNode.role,
+      role: ariaNode.role, // Always include the role.
     };
 
-    // Add properties based on the original logic
+    // Add 'name' property if present and not empty after rendering.
+    // The original YAML method had a length check (<= 900) due to YAML key limits;
+    // this is not necessary for JSON values, so we only check for presence and content.
     if (ariaNode.name) {
-      // Original code checked name length <= 900, we will just include if present after rendering
       const name = renderString(ariaNode.name);
       if (name) {
-        // Only add if name is not empty after rendering
         jsonNode.name = name;
       }
     }
 
+    // Add boolean and mixed-state attributes if they are defined or true.
+    // The conditions for inclusion are consistent with the original renderAriaTree.
     if (ariaNode.checked !== undefined) {
       jsonNode.checked = ariaNode.checked;
     }
@@ -612,29 +633,30 @@ export function renderAriaTreeAsJSON(
       jsonNode.selected = ariaNode.selected;
     }
 
+    // Add properties specific to AI mode if 'forAI' option is true and element receives pointer events.
     if (options?.forAI && receivesPointerEvents(ariaNode)) {
       if (ariaNode.ref) {
         jsonNode.ref = ariaNode.ref;
       }
       if (hasPointerCursor(ariaNode)) {
-        jsonNode.cursor = "pointer"; // Represent cursor as a property
+        jsonNode.cursor = "pointer"; // Represent cursor as a distinct property.
       }
     }
 
-    // Add props if any
+    // Include all 'props' as a nested object if any exist.
     const propsKeys = Object.keys(ariaNode.props);
     if (propsKeys.length > 0) {
-      jsonNode.props = { ...ariaNode.props }; // Copy props object
+      jsonNode.props = { ...ariaNode.props }; // Deep copy or shallow copy depending on complexity of props.
     }
 
-    // Recursively build children array
+    // Recursively process children and add them as an array.
     if (ariaNode.children && ariaNode.children.length > 0) {
       const children = ariaNode.children
-        .map((child) => buildJsonObject(child, ariaNode))
-        .filter((child) => child !== null); // Filter out skipped nodes
+        .map((child) => buildJsonObject(child, ariaNode)) // Map each child to its JSON representation.
+        .filter((child) => child !== null); // Filter out any children that were skipped (e.g., text nodes).
 
       if (children.length > 0) {
-        jsonNode.children = children;
+        jsonNode.children = children; // Add children array only if it's not empty.
       }
     }
 
@@ -644,18 +666,19 @@ export function renderAriaTreeAsJSON(
   const ariaNode = ariaSnapshot.root;
   let resultObject: any;
 
+  // Special handling for the root node if it's a "fragment".
+  // If it's a fragment, we return an array of its children, similar to how renderAriaTree processes fragments.
   if (ariaNode.role === "fragment" && ariaNode.children) {
-    // If the root is a fragment, process its children and return them as an array
     resultObject = ariaNode.children
       .map((child) => buildJsonObject(child, ariaNode))
       .filter((child) => child !== null);
   } else {
-    // Otherwise, process the root node
+    // Otherwise, process the root node itself.
     resultObject = buildJsonObject(ariaNode, null);
   }
 
-  // Finally, stringify the resulting object/array into JSON format
-  return JSON.stringify(resultObject, null, 2); // Use 2 spaces for indentation for readability
+  // Convert the final JavaScript object (or array) into a JSON string with 2-space indentation for readability.
+  return JSON.stringify(resultObject, null, 2);
 }
 
 function convertToBestGuessRegex(text: string): string {

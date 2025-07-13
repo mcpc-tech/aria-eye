@@ -128,7 +128,7 @@ app.openapi(
       body: {
         content: {
           "application/json": {
-            schema: ChatRequestSchema,
+            schema: z.any(),
           },
         },
       },
@@ -146,6 +146,7 @@ app.openapi(
   }),
   async (c) => {
     const body = await c.req.valid("json");
+    console.log(`Received request:`, body);
     let response;
 
     const wsUrl = process.env.CHROME_WS_URL || (await getBrowserWSUrl());
@@ -160,6 +161,7 @@ app.openapi(
       await selectGeminiModel(eye, body.model || "gemini-2.5-flash");
       await submitGeminiPrompt(eye, prompt);
       const geminiResponse = await getGeminiResponse(eye, page);
+      // const geminiResponse = ''
 
       response = {
         id: "chatcmpl-gemini",
@@ -195,6 +197,7 @@ app.openapi(
         },
         service_tier: "default",
       };
+      console.log("Gemini automation response:", response);
       return c.json(response) as never;
     } catch (err) {
       console.log("Gemini automation error:", err);
@@ -231,6 +234,7 @@ app.openapi(
         service_tier: "default",
       };
 
+      console.error("Gemini automation error response:", response);
       return c.json(response) as never;
     }
   }
@@ -242,6 +246,19 @@ app.doc("/doc", {
     version: "1.0.0",
     title: "Mock OpenAI API",
   },
+});
+
+// Catch-all route for all other requests
+app.all("*", (c) => {
+  console.log(`Unhandled request: ${c.req.method} ${c.req.url}`);
+  return c.json(
+    {
+      error: "Endpoint not found",
+      path: c.req.url,
+      method: c.req.method,
+    },
+    404
+  );
 });
 
 // Export fetch handler for edge/serverless environments

@@ -4,5 +4,5 @@
 
 In browser:
 ```bash
-console.log(_a11y.ariaSnapshot(document.documentElement))
+console.log(_a11y.ariaSnapshot(document.documentElement, {forAI: true}))
 ```

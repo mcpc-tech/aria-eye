@@ -39,7 +39,7 @@ export const a11yRefSelect = async (
   highlight = true
 ) => {
   const handle = await evaluateHandle((ref) => {
-    const element = window._a11y._lastAriaSnapshot?.elements?.get(ref);
+    const element = window._a11y?._getElementByRef(ref);
     console.log("Selecting element by ref:", ref, element);
     return element;
   }, ref);
@@ -64,30 +64,28 @@ export const highlightElement = async (
   ref: string
 ) => {
   // Instead of passing the elementHandle into the page context, just pass the ref.
-  await evaluate(
-    (ref) => {
-      // Look up the element by ref inside the page context.
-      const element =
-        window._a11y?._lastAriaSnapshot?.elements?.get(ref)
-      if (!element) return;
+  await evaluate((ref) => {
+    // Look up the element by ref inside the page context.
+    const element = window._a11y?._getElementByRef(ref);
+    if (!element) return;
 
-      // Remove existing overlay and container if they exist
-      const existingOverlay = document.getElementById("a11y-highlight-overlay");
-      const existingContainer = document.getElementById(
-        "a11y-highlight-container"
-      );
+    // Remove existing overlay and container if they exist
+    const existingOverlay = document.getElementById("a11y-highlight-overlay");
+    const existingContainer = document.getElementById(
+      "a11y-highlight-container"
+    );
 
-      if (existingOverlay) {
-        existingOverlay.remove();
-      }
-      if (existingContainer) {
-        existingContainer.remove();
-      }
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
+    if (existingContainer) {
+      existingContainer.remove();
+    }
 
-      // Create semi-transparent overlay covering the entire viewport
-      const overlay = document.createElement("div");
-      overlay.id = "a11y-highlight-overlay";
-      overlay.style.cssText = `
+    // Create semi-transparent overlay covering the entire viewport
+    const overlay = document.createElement("div");
+    overlay.id = "a11y-highlight-overlay";
+    overlay.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
@@ -100,25 +98,24 @@ export const highlightElement = async (
         transition: opacity 0.25s;
       `;
 
-      // Create highlight container for the target element
-      const highlightContainer = document.createElement("div");
-      highlightContainer.id = "a11y-highlight-container";
+    // Create highlight container for the target element
+    const highlightContainer = document.createElement("div");
+    highlightContainer.id = "a11y-highlight-container";
 
-      // Get element's bounding rectangle relative to viewport
-      const rect = element.getBoundingClientRect();
+    // Get element's bounding rectangle relative to viewport
+    const rect = element.getBoundingClientRect();
 
-      // Get current scroll position
-      const scrollLeft =
-        window.pageXOffset || document.documentElement.scrollLeft;
-      const scrollTop =
-        window.pageYOffset || document.documentElement.scrollTop;
+    // Get current scroll position
+    const scrollLeft =
+      window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
 
-      // Calculate element's absolute position relative to document
-      const elementLeft = rect.left + scrollLeft;
-      const elementTop = rect.top + scrollTop;
+    // Calculate element's absolute position relative to document
+    const elementLeft = rect.left + scrollLeft;
+    const elementTop = rect.top + scrollTop;
 
-      // Position highlight container exactly around the element
-      highlightContainer.style.cssText = `
+    // Position highlight container exactly around the element
+    highlightContainer.style.cssText = `
         position: absolute;
         left: ${elementLeft}px;
         top: ${elementTop}px;
@@ -130,9 +127,9 @@ export const highlightElement = async (
         transition: opacity 0.25s;
       `;
 
-      // Create the visual highlight border with glow effect
-      const highlightBorder = document.createElement("div");
-      highlightBorder.style.cssText = `
+    // Create the visual highlight border with glow effect
+    const highlightBorder = document.createElement("div");
+    highlightBorder.style.cssText = `
         width: 100%;
         height: 100%;
         border: 3px solid #ff3366;
@@ -141,9 +138,9 @@ export const highlightElement = async (
         background: transparent;
       `;
 
-      // Create label to identify the highlighted element
-      const label = document.createElement("div");
-      label.style.cssText = `
+    // Create label to identify the highlighted element
+    const label = document.createElement("div");
+    label.style.cssText = `
         position: absolute;
         top: -28px;
         left: 0;
@@ -157,36 +154,34 @@ export const highlightElement = async (
         box-shadow: 0 2px 8px #ff336688;
         letter-spacing: 0.5px;
       `;
-      label.textContent = `[ref=${ref}]`;
+    label.textContent = `[ref=${ref}]`;
 
-      // Assemble the highlight components
-      highlightContainer.appendChild(highlightBorder);
-      highlightContainer.appendChild(label);
-      document.body.appendChild(overlay);
-      document.body.appendChild(highlightContainer);
+    // Assemble the highlight components
+    highlightContainer.appendChild(highlightBorder);
+    highlightContainer.appendChild(label);
+    document.body.appendChild(overlay);
+    document.body.appendChild(highlightContainer);
 
-      // Fade in the highlight elements
-      requestAnimationFrame(() => {
-        overlay.style.opacity = "1";
-        highlightContainer.style.opacity = "1";
-      });
+    // Fade in the highlight elements
+    requestAnimationFrame(() => {
+      overlay.style.opacity = "1";
+      highlightContainer.style.opacity = "1";
+    });
 
-      // Auto-remove highlight after 1 second with fade out
+    // Auto-remove highlight after 1 second with fade out
+    setTimeout(() => {
+      overlay.style.opacity = "0";
+      highlightContainer.style.opacity = "0";
+
+      // Remove elements after fade out transition completes
       setTimeout(() => {
-        overlay.style.opacity = "0";
-        highlightContainer.style.opacity = "0";
-
-        // Remove elements after fade out transition completes
-        setTimeout(() => {
-          if (overlay.parentNode) {
-            overlay.remove();
-          }
-          if (highlightContainer.parentNode) {
-            highlightContainer.remove();
-          }
-        }, 300);
-      }, 1000);
-    },
-    ref
-  );
+        if (overlay.parentNode) {
+          overlay.remove();
+        }
+        if (highlightContainer.parentNode) {
+          highlightContainer.remove();
+        }
+      }, 300);
+    }, 1000);
+  }, ref);
 };

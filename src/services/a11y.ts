@@ -19,12 +19,15 @@ export const injectA11y = (
 
   return evaluate(
     ({ a11yBundle, globalName }) => {
+      const win = window as Window & { [globalName]?: any };
+      if (win[globalName]) {
+        return;
+      }
       const script = document.createElement("script");
       script.textContent = a11yBundle;
       document.head.appendChild(script);
       script.remove();
 
-      const win = window as Window & { [globalName]?: any };
       if (!win[globalName]) {
         throw new Error("_a11y failed to load.");
       }

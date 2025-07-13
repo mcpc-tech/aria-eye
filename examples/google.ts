@@ -46,8 +46,9 @@ async function main() {
     waitUntil: "networkidle2",
   });
 
-  await eye.look("Search combobox").then((ele) => {
-    return ele?.type("MCP");
+  await eye.look("Search combobox").then(async (ele) => {
+    await ele?.type("MCP");
+    await ele?.press("Enter");
   });
 
   await eye.look("Google Search button").then((ele) => {
@@ -56,7 +57,7 @@ async function main() {
 
   await page.waitForNavigation({ waitUntil: "networkidle2" });
 
-  await eye.look("Model Context Protocol heading, level 3").then((ele) => {
+  await eye.look("Model Context Protocol").then((ele) => {
     return ele?.click();
   });
 

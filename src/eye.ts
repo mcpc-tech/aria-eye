@@ -8,8 +8,6 @@ import {
   parseA11yRef,
 } from "@isomorphic/dom";
 import { ElementHandle } from "puppeteer";
-import fs from "node:fs";
-import { MemoryItem } from "mem0ai/oss";
 
 const MEM_USER_ID = "eye-client";
 
@@ -31,37 +29,43 @@ export interface EyeProps {
  * AI with eyes - interact with web pages using text/image embeddings.
  */
 export const createEye = async ({ platform }: EyeProps) => {
-  await memory.deleteAll({ userId: MEM_USER_ID });
-  async function syncA11yMemoryFromTree(a11yTree: any) {
+  async function syncA11yMemoryFromTree() {
+    const a11yTree = await evaluate(() => {
+      return JSON.parse(
+        window._a11y.ariaSnapshotJSON(document.documentElement, { forAI: true })
+      );
+    });
     const rawResults = (
       await memory.getAll({
         userId: MEM_USER_ID,
       })
     ).results;
-    const cachedMemo: Array<{ role: string; content: string; id: string }> =
+    const results: Array<{ role: string; content: string; id: string }> =
       rawResults.map((item) => ({
         role: "user",
         content: item.memory ?? "",
         id: item.id,
       }));
     const ariaList = flattenTreeDFS(a11yTree?.[0]);
-    const memories = ariaList
+    const ariaMemories = ariaList
       .filter(({ ref }) => Boolean(ref))
       .map(({ role, name, ref, text, level }) => {
         return {
           role: "user",
-          content: `${name ?? "N/A"} ${role ?? "N/A"}, with ${
-            text ?? "N/A"
-          } [heading-level=${level ?? "N/A"}] [selector=${ref ?? "N/A"}]`,
+          content: `${name ?? "-"} ${role ?? "-"}, with ${
+            text ?? "-"
+          } [selector=${ref ?? "-"}]`,
         };
       });
 
-    const needsToBeAddedMemories = memories.filter(({ content, role }) => {
-      return !cachedMemo.some((m) => content === m.content && role === m.role);
+    const needsToBeAddedMemories = ariaMemories.filter(({ content, role }) => {
+      return !results.some((m) => content === m.content && role === m.role);
     });
 
-    const needsToBeDeletedMemories = cachedMemo.filter(({ content, role }) => {
-      return !memories.some((m) => content === m.content && role === m.role);
+    const needsToBeDeletedMemories = results.filter(({ content, role }) => {
+      return !ariaMemories.some(
+        (m) => content === m.content && role === m.role
+      );
     });
 
     // Perform add and delete concurrently, but prioritize add (await add first)
@@ -80,7 +84,6 @@ export const createEye = async ({ platform }: EyeProps) => {
           )
         : Promise.resolve();
 
-    // Await add first, then delete
     await Promise.all([addPromise, deletePromise]);
 
     if (needsToBeAddedMemories.length > 0) {
@@ -96,14 +99,14 @@ export const createEye = async ({ platform }: EyeProps) => {
   }
 
   const { evaluate, evaluateHandle } = getEvaluationAdapter(platform);
-  
-  const a11yMemo = async () => {
-    const a11yTree = await evaluate(() => {
-      return JSON.parse(
-        window._a11y.ariaSnapshotJSON(document.documentElement, { forAI: true })
-      );
-    });
-    await syncA11yMemoryFromTree(a11yTree);
+
+  const blink = async (duration: number = 400) =>
+    await new Promise((resolve) => setTimeout(resolve, duration));
+
+  const setup = async () => {
+    await injectA11y(evaluate);
+    await blink();
+    await syncA11yMemoryFromTree();
   };
 
   return {
@@ -112,13 +115,22 @@ export const createEye = async ({ platform }: EyeProps) => {
      */
     async look(
       target: string,
-      similarityThreshold: number = 0.6
+      similarityThreshold: number = 0.5
     ): Promise<ElementHandle> {
-      await injectA11y(evaluate);
-      const { results } = await queryElementsByDescription(a11yMemo, target);
+      await setup();
+      const { results } = await memory.search(target, {
+        userId: MEM_USER_ID,
+        limit: 10,
+      });
       const element = results?.[0];
       if (element.score < similarityThreshold) {
-        return Promise.reject();
+        return Promise.reject(
+          `Element matching "${target}" not found, score: ${
+            element.score
+          }, threshold: ${similarityThreshold}, results: ${JSON.stringify(
+            results.slice(0, 10)
+          )}`
+        );
       }
 
       const ref = parseA11yRef(element?.memory);
@@ -134,13 +146,19 @@ export const createEye = async ({ platform }: EyeProps) => {
      * Wait for an element matching the description to appear
      */
     async wait(description: string, similarityThreshold = 0.8) {
-      await injectA11y(evaluate);
-      const results = await waitElementByDescription(a11yMemo, description, {
+      await setup();
+      const results = await waitElementByDescription(setup, description, {
         similarityThreshold,
       });
       const element = results?.[0];
       if (element.score < similarityThreshold) {
-        return Promise.reject();
+        return Promise.reject(
+          `Element matching "${description}" not found, score: ${
+            element.score
+          }, threshold: ${similarityThreshold}, results: ${JSON.stringify(
+            results.slice(0, 10)
+          )}`
+        );
       }
 
       const ref = parseA11yRef(element?.memory);
@@ -158,14 +176,15 @@ export const createEye = async ({ platform }: EyeProps) => {
      * @default 400
      */
     async blink(duration: number = 400) {
-      await new Promise((resolve) => setTimeout(resolve, duration));
+      await blink(duration);
     },
 
     /**
      * Take a a11y snapshot of current page
      */
     async snapshot(yaml = false) {
-      await injectA11y(evaluate);
+      await blink();
+
       const raw = await evaluate((yaml) => {
         return window._a11y[yaml ? "ariaSnapshot" : "ariaSnapshotJSON"](
           document.documentElement,
@@ -174,31 +193,16 @@ export const createEye = async ({ platform }: EyeProps) => {
           }
         );
       }, yaml);
-      if (!yaml) {
-        const a11yTree = JSON.parse(raw);
-        await syncA11yMemoryFromTree(a11yTree);
-      }
       return raw;
     },
   };
 };
 
-export async function queryElementsByDescription(
-  a11yMemo: any,
-  target: string
-) {
-  await a11yMemo();
-  return await memory.search(target, {
-    userId: MEM_USER_ID,
-    limit: 100,
-  });
-}
-
 /**
  * Waits for an element matching the given description to appear on the page.
  */
 export async function waitElementByDescription(
-  a11yMemo: any,
+  setup: () => Promise<void>,
   description: string,
   options: {
     timeout?: number;
@@ -209,17 +213,16 @@ export async function waitElementByDescription(
 ) {
   const timeout = options.timeout || 60000;
   const pollingInterval = options.pollingInterval || 1000;
-  const mode = options.mode || SEE_MODE.Query;
   const similarityThreshold = options.similarityThreshold || 0.8;
 
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeout) {
     try {
-      await a11yMemo();
+      await setup();
       const { results } = await memory.search(description, {
         userId: MEM_USER_ID,
-        limit: 100,
+        limit: 10,
       });
 
       const filteredResults = results.filter(

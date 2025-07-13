@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "browser": "/Applications/Arc.app/Contents/MacOS/Arc --remote-debugging-port=9222 --enable-features=ClipboardRead --user-data-dir=/tmp/chrome_debug > /dev/null 2>&1 &",
-    "example:google": "MEM0_TELEMETRY=False tsx examples/google.ts",
-    "server": "MEM0_TELEMETRY=False tsx --watch src/server/server.ts"
+    "example:google": "MEM0_TELEMETRY=false tsx examples/google.ts",
+    "server": "MEM0_TELEMETRY=false tsx --watch src/server/server.ts"
   },
   "keywords": [],
   "author": "",

@@ -57,23 +57,25 @@ export async function selectGeminiModel(
   eye: Awaited<ReturnType<typeof createEye>>,
   modelName: string = "gemini-2.5-flash"
 ) {
-  const webName = modelName.replace("gemini-", "");
   await eye
-    .look(`button 2.5 flash, or button  Personalization (preview), or button 2.5 Pro`)
+    .look(
+      `button 2.5 flash, or button Personalization (preview), or button 2.5 Pro`
+    )
     .then((ele) => ele?.click());
-  await eye.look(`menu item ${webName} `).then((ele) => ele?.click());
+  await eye.look(`Reasoning, math & code 2.5 Pro`).then((ele) => ele?.click());
 }
 
 export async function submitGeminiPrompt(
   eye: Awaited<ReturnType<typeof createEye>>,
   prompt: string
 ) {
-  await eye.look("text: Ask Gemini").then(async (ele) => {
-    await ele?.type(
-      // Escape /n in the prompt
-      prompt.replace(/\n/g, "\\n")
-    );
-    await ele?.press("Enter");
+  await eye.look("textbox Enter a prompt here").then(async (ele) => {
+    if (ele) {
+      await ele.evaluate((el, value) => {
+        (el as HTMLInputElement).innerText = value;
+      }, prompt);
+      await ele.press("Enter");
+    }
   });
 }
 
@@ -89,6 +91,5 @@ export async function getGeminiResponse(
 ) {
   const ele = await eye.wait("button Copy");
   await ele.click();
-
   return clipboard.readSync();
 }

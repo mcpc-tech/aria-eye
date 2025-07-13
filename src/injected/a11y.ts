@@ -12,8 +12,29 @@ export function ariaSnapshot(
     throw this.createStacklessError(
       "Can only capture aria snapshot of Element nodes."
     );
+  const dfs = (node, ref) => {
+    if (!node) return null;
+    if (node.ref === ref) return node;
+    for (const child of node.children || []) {
+      const found = dfs(child, ref);
+      if (found) return found;
+    }
+    return null;
+  };
   this._lastAriaSnapshot = generateAriaTree(node as Element, options);
-  return renderAriaTree(this._lastAriaSnapshot, options);
+
+  this._getElementByRefBackup = (ref) => {
+    return dfs(this._lastAriaSnapshot.root, ref)?.element;
+  };
+  this._getElementByRef = (ref) => {
+    return dfs(this._lastAriaSnapshot.root, ref)?.element;
+  };
+
+  this._lastAriaSnapshotRender = renderAriaTree(
+    this._lastAriaSnapshot,
+    options
+  );
+  return this._lastAriaSnapshotRender;
 }
 
 export function ariaSnapshotJSON(
@@ -24,8 +45,31 @@ export function ariaSnapshotJSON(
     throw this.createStacklessError(
       "Can only capture aria snapshot of Element nodes."
     );
+  const dfs = (node, ref) => {
+    if (!node) return null;
+    if (node.ref === ref) return node;
+    for (const child of node.children || []) {
+      const found = dfs(child, ref);
+      if (found) return found;
+    }
+    return null;
+  };
   this._lastAriaSnapshot = generateAriaTree(node as Element, options);
-  return renderAriaTreeAsJSON(this._lastAriaSnapshot, options);
+
+  this._getElementByRefBackup = (ref) => {
+    return dfs(this._lastAriaSnapshot.root, ref)?.element;
+  };
+  this._getElementByRef = (ref) => {
+    const element = this._lastAriaSnapshot?.elements.get(ref);
+    return element;
+  };
+
+  this._lastAriaSnapshotRender = renderAriaTreeAsJSON(
+    this._lastAriaSnapshot,
+    options
+  );
+
+  return this._lastAriaSnapshotRender;
 }
 
 export { generateAriaTree };
