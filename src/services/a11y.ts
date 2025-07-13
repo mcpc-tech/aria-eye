@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+import { URL } from "node:url";
 import * as esbuild from "esbuild";
 import { EyeEvalProps, EyeProps } from "eye";
 
@@ -5,7 +7,10 @@ export const injectA11y = (
   evaluate: EyeEvalProps["evaluate"],
   globalName = "_a11y"
 ) => {
-  const injectPath = require.resolve("../injected/a11y");
+  const injectPath = fileURLToPath(
+    // @ts-ignore
+    new URL("../injected/a11y.ts", import.meta.url)
+  );
 
   const result = esbuild.buildSync({
     entryPoints: [injectPath],
@@ -32,6 +37,6 @@ export const injectA11y = (
         throw new Error("_a11y failed to load.");
       }
     },
-    { a11yBundle, globalName }
+    { a11yBundle, globalName } as any
   );
 };

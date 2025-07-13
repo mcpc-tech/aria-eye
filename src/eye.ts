@@ -17,7 +17,7 @@ export type EvaluateFunction = <T extends any, Arg>(
 ) => Promise<T>;
 
 export interface EyeEvalProps {
-  evaluate?: EvaluateFunction;
+  evaluate: EvaluateFunction;
   evaluateHandle?: EvaluateFunction;
 }
 
@@ -29,6 +29,7 @@ export interface EyeProps {
  * AI with eyes - interact with web pages using text/image embeddings.
  */
 export const createEye = async ({ platform }: EyeProps) => {
+  const { evaluate, evaluateHandle } = getEvaluationAdapter(platform);
   await memory.reset();
   async function syncA11yMemoryFromTree() {
     const a11yTree = await evaluate(() => {
@@ -97,8 +98,6 @@ export const createEye = async ({ platform }: EyeProps) => {
     }
   }
 
-  const { evaluate, evaluateHandle } = getEvaluationAdapter(platform);
-
   const blink = async (duration: number = 400) =>
     await new Promise((resolve) => setTimeout(resolve, duration));
 
@@ -125,7 +124,7 @@ export const createEye = async ({ platform }: EyeProps) => {
         limit: 10,
       });
       const element = results?.[0];
-      if (element.score < similarityThreshold) {
+      if (element.score! < similarityThreshold) {
         return Promise.reject(
           `Element matching "${target}" not found, score: ${
             element.score
@@ -153,7 +152,7 @@ export const createEye = async ({ platform }: EyeProps) => {
         similarityThreshold,
       });
       const element = results?.[0];
-      if (element.score < similarityThreshold) {
+      if (element.score! < similarityThreshold) {
         return Promise.reject(
           `Element matching "${description}" not found, score: ${
             element.score
@@ -226,7 +225,7 @@ export async function waitElementByDescription(
       });
 
       const filteredResults = results.filter(
-        (r) => r.score >= similarityThreshold
+        (r) => r.score! >= similarityThreshold
       );
 
       if (filteredResults.length > 0) {

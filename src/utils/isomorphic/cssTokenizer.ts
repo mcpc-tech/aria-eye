@@ -59,6 +59,7 @@ function preprocess(str: string): number[] {
       code = Math.pow(2, 16) + lead * Math.pow(2, 10) + trail;
       i++;
     }
+    // @ts-expect-error - 
     codepoints.push(code);
   }
   return codepoints;

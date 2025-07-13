@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noImplicitAny": false,
+    "baseUrl": "./src",
+    "paths": {
+      "@isomorphic/*": ["./utils/isomorphic/*"]
+    },
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "outDir": "./dist/mjs",
+    "declaration": true,
+    "declarationDir": "../types"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/utils/isomorphic/*.ts"]
+}

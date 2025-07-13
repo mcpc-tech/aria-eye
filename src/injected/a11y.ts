@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {
   generateAriaTree,
   renderAriaTree,
@@ -9,9 +10,7 @@ export function ariaSnapshot(
   options?: { mode?: "raw" | "regex"; forAI?: boolean; refPrefix?: string }
 ): string {
   if (node.nodeType !== Node.ELEMENT_NODE)
-    throw this.createStacklessError(
-      "Can only capture aria snapshot of Element nodes."
-    );
+    throw new Error("Can only capture aria snapshot of Element nodes.");
   const dfs = (node, ref) => {
     if (!node) return null;
     if (node.ref === ref) return node;

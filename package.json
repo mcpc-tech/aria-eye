@@ -1,20 +1,32 @@
 {
   "name": "aria-eye",
-  "version": "0.0.1",
+  "version": "0.0.1-beta-2",
   "description": "",
-  "main": "dist/src/index.js",
-  "module": "dist/src/index.js",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/mjs/index.js",
+  "types": "./dist/types/index.d.ts",
   "exports": {
-    "import": "./dist/src/index.js",
-    "require": "./dist/src/index.js"
+    ".": {
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/mjs/index.js"
+      },
+      "require": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
   },
   "scripts": {
-    "build": "tsc --outDir dist",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
     "browser": "/Applications/Arc.app/Contents/MacOS/Arc --remote-debugging-port=9222 --enable-features=ClipboardRead --user-data-dir=/tmp/chrome_debug > /dev/null 2>&1 &",
     "example:google": "MEM0_TELEMETRY=false tsx examples/google.ts",
     "server": "MEM0_TELEMETRY=false tsx --watch src/server/server.ts"
   },
-  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -23,29 +35,17 @@
     "axe-core": "^4.10.3",
     "esbuild": "^0.25.1",
     "jsdom": "^26.0.0",
-    "puppeteer": "^24.10.0",
     "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "@hono/node-server": "^1.15.0",
+    "@hono/zod-openapi": "^0.19.9"
   },
   "dependencies": {
-    "@ai-sdk/google": "^1.2.1",
-    "@ai-sdk/openai": "^1.2.5",
-    "@hono/node-server": "^1.15.0",
-    "@hono/zod-openapi": "^0.19.9",
-    "@huggingface/transformers": "^3.4.0",
-    "@openrouter/ai-sdk-provider": "^0.4.3",
-    "@tensorflow/tfjs": "^4.22.0",
-    "@tensorflow/tfjs-node": "^4.22.0",
-    "@tensorflow/tfjs-node-gpu": "^4.22.0",
     "@types/node": "^22.13.10",
-    "ai": "^4.1.62",
+    "puppeteer": "^24.10.0",
     "clipboardy": "^4.0.0",
     "es-toolkit": "^1.39.3",
-    "html2canvas": "^1.4.1",
-    "html2canvas-pro": "^1.5.8",
     "mem0ai": "^2.1.30",
-    "optional": "^0.1.4",
-    "sharp": "^0.33.5",
     "zod": "^3.25.76"
   },
   "volta": {

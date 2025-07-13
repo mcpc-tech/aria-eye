@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noImplicitAny": false,
+    "baseUrl": "./src",
+    "paths": {
+      "@isomorphic/*": ["./utils/isomorphic/*"]
+    },
+    "module": "CommonJS",
+    "outDir": "./dist/cjs",
+    "declaration": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/utils/isomorphic/*.ts"]
+}
