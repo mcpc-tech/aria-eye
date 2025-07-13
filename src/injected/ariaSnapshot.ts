@@ -549,7 +549,8 @@ export function renderAriaTree(
 
 /**
  * MODIFIED
- * Renders an Aria tree snapshot as a JSON string.
+ * Renders an Aria tree snapshot as a JSON string, including a 'prompt' property
+ * that mirrors the equivalent YAML output from `renderAriaTree`.
  *
  * @param ariaSnapshot The Aria snapshot to render.
  * @param options Rendering options (mode, forAI).
@@ -559,52 +560,35 @@ export function renderAriaTreeAsJSON(
   ariaSnapshot: AriaSnapshot,
   options?: { mode?: "raw" | "regex"; forAI?: boolean }
 ): string {
-  // Determine if text nodes should be included based on the mode.
-  // In 'regex' mode, textContributesInfo function is used to decide.
-  // Otherwise, all text nodes are included.
   const includeText =
     options?.mode === "regex" ? textContributesInfo : () => true;
 
-  // Determine the string rendering function based on the mode.
-  // In 'regex' mode, convertToBestGuessRegex is used to transform strings.
-  // Otherwise, strings are rendered as-is.
   const renderString =
     options?.mode === "regex" ? convertToBestGuessRegex : (str: string) => str;
 
-  /**
-   * Recursively builds a JSON-like object structure from an AriaNode or a string (text node).
-   * This function mirrors the logic of the original renderAriaTree to ensure consistency
-   * in what information is extracted and under what conditions, but formats it for JSON.
-   *
-   * @param ariaNode The current AriaNode or string to process.
-   * @param parentAriaNode The parent AriaNode, used for context (e.g., for includeText).
-   * @returns A JSON-compatible object representing the Aria node, or null if skipped.
-   */
   const buildJsonObject = (
     ariaNode: AriaNode | string,
     parentAriaNode: AriaNode | null
   ): any => {
     // Handle text nodes (string type)
     if (typeof ariaNode === "string") {
-      // Check if the text node should be included based on parent context and mode.
       if (parentAriaNode && !includeText(parentAriaNode, ariaNode)) {
-        return null; // Skip text node if includeText returns false.
+        return null;
       }
-      const text = renderString(ariaNode); // Render the text string.
+      const text = renderString(ariaNode);
       if (text) {
-        return { text: text }; // Represent text as an object { text: "..." } for clarity in JSON.
+        // Faithfully replicate the YAML output for the prompt.
+        const prompt = "text: " + yamlEscapeValueIfNeeded(text);
+        return { text: text, prompt: prompt };
       }
-      return null; // Skip empty text node after rendering.
+      return null;
     }
 
     // Handle AriaNode (object type)
     const jsonNode: any = {
-      role: ariaNode.role, // Always include the role.
+      role: ariaNode.role,
     };
 
-    // Add 'name' property if present and not empty after rendering.
-    // The original YAML method had a length check (<= 900) due to YAML key limits;
-    // this is not necessary for JSON values, so we only check for presence and content.
     if (ariaNode.name) {
       const name = renderString(ariaNode.name);
       if (name) {
@@ -612,51 +596,76 @@ export function renderAriaTreeAsJSON(
       }
     }
 
-    // Add boolean and mixed-state attributes if they are defined or true.
-    // The conditions for inclusion are consistent with the original renderAriaTree.
-    if (ariaNode.checked !== undefined) {
-      jsonNode.checked = ariaNode.checked;
-    }
-    if (ariaNode.disabled) {
-      jsonNode.disabled = ariaNode.disabled;
-    }
-    if (ariaNode.expanded) {
-      jsonNode.expanded = ariaNode.expanded;
-    }
-    if (ariaNode.level) {
-      jsonNode.level = ariaNode.level;
-    }
-    if (ariaNode.pressed !== undefined) {
-      jsonNode.pressed = ariaNode.pressed;
-    }
-    if (ariaNode.selected) {
-      jsonNode.selected = ariaNode.selected;
-    }
+    if (ariaNode.checked !== undefined) jsonNode.checked = ariaNode.checked;
+    if (ariaNode.disabled) jsonNode.disabled = ariaNode.disabled;
+    if (ariaNode.expanded) jsonNode.expanded = ariaNode.expanded;
+    if (ariaNode.level) jsonNode.level = ariaNode.level;
+    if (ariaNode.pressed !== undefined) jsonNode.pressed = ariaNode.pressed;
+    if (ariaNode.selected) jsonNode.selected = ariaNode.selected;
 
-    // Add properties specific to AI mode if 'forAI' option is true and element receives pointer events.
     if (options?.forAI && receivesPointerEvents(ariaNode)) {
-      if (ariaNode.ref) {
-        jsonNode.ref = ariaNode.ref;
-      }
-      if (hasPointerCursor(ariaNode)) {
-        jsonNode.cursor = "pointer"; // Represent cursor as a distinct property.
-      }
+      if (ariaNode.ref) jsonNode.ref = ariaNode.ref;
+      if (hasPointerCursor(ariaNode)) jsonNode.cursor = "pointer";
     }
 
-    // Include all 'props' as a nested object if any exist.
+    // Generate the YAML-like prompt string for this node.
+    let key = ariaNode.role;
+    if (ariaNode.name && ariaNode.name.length <= 900) {
+      const name = renderString(ariaNode.name);
+      if (name) {
+        const stringifiedName =
+          name.startsWith("/") && name.endsWith("/")
+            ? name
+            : JSON.stringify(name);
+        key += " " + stringifiedName;
+      }
+    }
+    if (ariaNode.checked === "mixed") key += ` [checked=mixed]`;
+    else if (ariaNode.checked === true) key += ` [checked]`;
+    if (ariaNode.disabled) key += ` [disabled]`;
+    if (ariaNode.expanded) key += ` [expanded]`;
+    if (ariaNode.level) key += ` [level=${ariaNode.level}]`;
+    if (ariaNode.pressed === "mixed") key += ` [pressed=mixed]`;
+    else if (ariaNode.pressed === true) key += ` [pressed]`;
+    if (ariaNode.selected === true) key += ` [selected]`;
+    if (options?.forAI && receivesPointerEvents(ariaNode)) {
+      const ref = ariaNode.ref;
+      const cursor = hasPointerCursor(ariaNode) ? " [cursor=pointer]" : "";
+      if (ref) key += ` [ref=${ref}]${cursor}`;
+    }
+
+    const escapedKey = yamlEscapeKeyIfNeeded(key);
+    const hasProps = !!Object.keys(ariaNode.props).length;
+
+    if (!ariaNode.children.length && !hasProps) {
+      jsonNode.prompt = escapedKey;
+    } else if (
+      ariaNode.children.length === 1 &&
+      typeof ariaNode.children[0] === "string" &&
+      !hasProps
+    ) {
+      const text = includeText(ariaNode, ariaNode.children[0])
+        ? renderString(ariaNode.children[0] as string)
+        : null;
+      if (text)
+        jsonNode.prompt = escapedKey + ": " + yamlEscapeValueIfNeeded(text);
+      else jsonNode.prompt = escapedKey;
+    } else {
+      jsonNode.prompt = escapedKey + ":";
+    }
+
     const propsKeys = Object.keys(ariaNode.props);
     if (propsKeys.length > 0) {
-      jsonNode.props = { ...ariaNode.props }; // Deep copy or shallow copy depending on complexity of props.
+      jsonNode.props = { ...ariaNode.props };
     }
 
-    // Recursively process children and add them as an array.
     if (ariaNode.children && ariaNode.children.length > 0) {
       const children = ariaNode.children
-        .map((child) => buildJsonObject(child, ariaNode)) // Map each child to its JSON representation.
-        .filter((child) => child !== null); // Filter out any children that were skipped (e.g., text nodes).
+        .map((child) => buildJsonObject(child, ariaNode))
+        .filter((child) => child !== null);
 
       if (children.length > 0) {
-        jsonNode.children = children; // Add children array only if it's not empty.
+        jsonNode.children = children;
       }
     }
 
@@ -666,18 +675,14 @@ export function renderAriaTreeAsJSON(
   const ariaNode = ariaSnapshot.root;
   let resultObject: any;
 
-  // Special handling for the root node if it's a "fragment".
-  // If it's a fragment, we return an array of its children, similar to how renderAriaTree processes fragments.
   if (ariaNode.role === "fragment" && ariaNode.children) {
     resultObject = ariaNode.children
       .map((child) => buildJsonObject(child, ariaNode))
       .filter((child) => child !== null);
   } else {
-    // Otherwise, process the root node itself.
     resultObject = buildJsonObject(ariaNode, null);
   }
 
-  // Convert the final JavaScript object (or array) into a JSON string with 2-space indentation for readability.
   return JSON.stringify(resultObject, null, 2);
 }
 

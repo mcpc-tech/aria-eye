@@ -5,7 +5,7 @@ import { memory } from "services/mem";
 import {
   a11yRefSelect,
   genArgsByPlatform as getEvaluationAdapter,
-  parseA11yRef,
+  parsePrompt,
 } from "@isomorphic/dom";
 import { ElementHandle } from "puppeteer";
 
@@ -29,6 +29,7 @@ export interface EyeProps {
  * AI with eyes - interact with web pages using text/image embeddings.
  */
 export const createEye = async ({ platform }: EyeProps) => {
+  await memory.reset();
   async function syncA11yMemoryFromTree() {
     const a11yTree = await evaluate(() => {
       return JSON.parse(
@@ -49,12 +50,10 @@ export const createEye = async ({ platform }: EyeProps) => {
     const ariaList = flattenTreeDFS(a11yTree?.[0]);
     const ariaMemories = ariaList
       .filter(({ ref }) => Boolean(ref))
-      .map(({ role, name, ref, text, level }) => {
+      .map(({ prompt }) => {
         return {
           role: "user",
-          content: `${name ?? "-"} ${role ?? "-"}, with ${
-            text ?? "-"
-          } [selector=${ref ?? "-"}]`,
+          content: prompt,
         };
       });
 
@@ -104,8 +103,11 @@ export const createEye = async ({ platform }: EyeProps) => {
     await new Promise((resolve) => setTimeout(resolve, duration));
 
   const setup = async () => {
+    // Inject a11y library to page if not already injected
     await injectA11y(evaluate);
+    // Allways blink before any action to ensure the eye is clear and ready
     await blink();
+    // Sync a11y memory from the current page tree
     await syncA11yMemoryFromTree();
   };
 
@@ -133,7 +135,7 @@ export const createEye = async ({ platform }: EyeProps) => {
         );
       }
 
-      const ref = parseA11yRef(element?.memory);
+      const ref = parsePrompt(element?.memory).ref as string;
       console.log(`Looking for element: ${target}, found:`, ref, element);
       const elementHandle = await a11yRefSelect(
         { evaluate, evaluateHandle },
@@ -161,7 +163,7 @@ export const createEye = async ({ platform }: EyeProps) => {
         );
       }
 
-      const ref = parseA11yRef(element?.memory);
+      const ref = parsePrompt(element?.memory).ref as string;
       const elementHandle = await a11yRefSelect(
         { evaluate, evaluateHandle },
         ref
@@ -183,8 +185,6 @@ export const createEye = async ({ platform }: EyeProps) => {
      * Take a a11y snapshot of current page
      */
     async snapshot(yaml = false) {
-      await blink();
-
       const raw = await evaluate((yaml) => {
         return window._a11y[yaml ? "ariaSnapshot" : "ariaSnapshotJSON"](
           document.documentElement,
