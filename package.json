@@ -1,13 +1,20 @@
 {
   "name": "aria-eye",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "dist/src/index.js",
+  "module": "dist/src/index.js",
+  "exports": {
+    "import": "./dist/src/index.js",
+    "require": "./dist/src/index.js"
+  },
   "scripts": {
+    "build": "tsc --outDir dist",
     "browser": "/Applications/Arc.app/Contents/MacOS/Arc --remote-debugging-port=9222 --enable-features=ClipboardRead --user-data-dir=/tmp/chrome_debug > /dev/null 2>&1 &",
     "example:google": "MEM0_TELEMETRY=false tsx examples/google.ts",
     "server": "MEM0_TELEMETRY=false tsx --watch src/server/server.ts"
   },
+  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",

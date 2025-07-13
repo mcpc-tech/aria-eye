@@ -5,10 +5,10 @@ import {
   goToGemini,
   selectGeminiModel,
   submitGeminiPrompt,
-  getBrowserWSUrl,
   getGeminiResponse,
 } from "../services/gemini";
 import { buildPrompt } from "../context/messages";
+import { getBrowserWSUrl } from "utils/browserWsUrl";
 
 const MessageSchema = z.object({
   role: z.string().openapi({ example: "user" }),

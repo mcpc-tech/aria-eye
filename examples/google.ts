@@ -1,30 +1,8 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { createEye } from "../src/eye";
-import { EYE_OUTPUT_DIR } from "../src/constants";
 import puppeteer from "puppeteer";
-
-if (!existsSync(EYE_OUTPUT_DIR)) {
-  mkdirSync(EYE_OUTPUT_DIR);
-} else {
-  rmSync(EYE_OUTPUT_DIR, { recursive: true, force: true });
-  mkdirSync(EYE_OUTPUT_DIR);
-}
+import { getBrowserWSUrl } from "../src/utils/browserWsUrl";
 
 async function main() {
-  const getBrowserWSUrl = async () => {
-    try {
-      const response = await fetch("http://localhost:9222/json/version");
-      const data = await response.json();
-      return data.webSocketDebuggerUrl;
-    } catch (e) {
-      console.error(`Error getting WebSocket URL: ${e}`);
-      console.error(
-        "Make sure Chrome/Chromium is running with --remote-debugging-port=9222"
-      );
-      return null;
-    }
-  };
-
   const wsUrl = await getBrowserWSUrl();
   if (!wsUrl) {
     throw new Error("Could not get WebSocket URL");
@@ -48,7 +26,6 @@ async function main() {
 
   await eye.look("Search combobox").then(async (ele) => {
     await ele?.type("MCP");
-    await ele?.press("Enter");
   });
 
   await eye.look("Google Search button").then((ele) => {

@@ -1,20 +1,13 @@
 import { existsSync, mkdirSync, rmSync } from "fs";
 import { EYE_OUTPUT_DIR } from "../src/constants";
 import {
-  getBrowserWSUrl,
   connectToBrowser,
   goToGemini,
   selectGeminiModel,
   submitGeminiPrompt,
   getGeminiSnapshot,
 } from "../src/services/gemini";
-
-if (!existsSync(EYE_OUTPUT_DIR)) {
-  mkdirSync(EYE_OUTPUT_DIR);
-} else {
-  rmSync(EYE_OUTPUT_DIR, { recursive: true, force: true });
-  mkdirSync(EYE_OUTPUT_DIR);
-}
+import { getBrowserWSUrl } from "../src/utils/browserWsUrl";
 
 async function main() {
   const wsUrl = await getBrowserWSUrl();

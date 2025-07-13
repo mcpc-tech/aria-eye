@@ -8,20 +8,6 @@ const geminiCache = new WeakMap<
   import("puppeteer").Page
 >();
 
-export const getBrowserWSUrl = async () => {
-  try {
-    const response = await fetch("http://localhost:9222/json/version");
-    const data = await response.json();
-    return data.webSocketDebuggerUrl;
-  } catch (e) {
-    console.error(`Error getting WebSocket URL: ${e}`);
-    console.error(
-      "Make sure Chrome/Chromium is running with --remote-debugging-port=9222"
-    );
-    return null;
-  }
-};
-
 // Cache for browser instances per wsUrl
 const browserCache = new Map<string, Promise<import("puppeteer").Browser>>();
 
