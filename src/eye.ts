@@ -84,31 +84,35 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
           userId: MEM_USER_ID,
         })
       : needsToBeAddedMemories.length > 0
-      ? memory.add(needsToBeAddedMemories, {
-          infer,
-          userId: MEM_USER_ID,
-        })
+      ? memory
+          .add(needsToBeAddedMemories, {
+            infer: false,
+            userId: MEM_USER_ID,
+          })
+          .then(() =>
+            console.log(
+              `Added ${needsToBeAddedMemories.length} new memories for user ${MEM_USER_ID}`
+            )
+          )
       : Promise.resolve();
 
-    const deletePromise =
-      needsToBeDeletedMemories.length > 0
-        ? Promise.all(
-            // needsToBeDeletedMemories.map((mem) => memory.delete(mem.id))
-            []
+    const deletePromise = infer
+      ? Promise.resolve()
+      : needsToBeDeletedMemories.length > 0
+      ? Promise.all(
+          needsToBeDeletedMemories.map((mem) => memory.delete(mem.id))
+        ).then(() =>
+          console.log(
+            `Deleted ${needsToBeDeletedMemories.length} outdated memories for user ${MEM_USER_ID}`
           )
-        : Promise.resolve();
+        )
+      : Promise.resolve();
 
-    await Promise.all([addPromise, deletePromise]);
+    console.log(await Promise.all([addPromise, deletePromise]));
 
     if (needsToBeAddedMemories.length > 0) {
-      console.log(
-        `Added ${needsToBeAddedMemories.length} new memories for user ${MEM_USER_ID}`
-      );
     }
     if (needsToBeDeletedMemories.length > 0) {
-      console.log(
-        `Deleted ${needsToBeDeletedMemories.length} outdated memories for user ${MEM_USER_ID}`
-      );
     }
   }
 
@@ -139,10 +143,10 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
       });
       console.log(`Looking for element: ${target}, results:`, results);
       const element = results?.[0];
-      if (element.score! < similarityThreshold) {
+      if (element?.score! < similarityThreshold) {
         return Promise.reject(
           `Element matching "${target}" not found, score: ${
-            element.score
+            element?.score
           }, threshold: ${similarityThreshold}, results: ${JSON.stringify(
             results.slice(0, 10)
           )}`

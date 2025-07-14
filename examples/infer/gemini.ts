@@ -38,7 +38,10 @@ export async function goToGemini(browser: import("puppeteer").Browser) {
     });
     geminiCache.set(browser, page);
   }
-  const eye = await createEye({ platform: { name: "puppeteer", page } });
+  const eye = await createEye({
+    platform: { name: "puppeteer", page },
+    infer: true,
+  });
   return { page, eye };
 }
 
@@ -46,11 +49,7 @@ export async function selectGeminiModel(
   eye: Awaited<ReturnType<typeof createEye>>,
   modelName: string = "gemini-2.5-flash"
 ) {
-  await eye
-    .look(
-      `select gemini model dropdown`
-    )
-    .then((ele) => ele?.click());
+  await eye.look(`select gemini model dropdown`).then((ele) => ele?.click());
   await eye.look(`gemini 2.5 pro option`).then((ele) => ele?.click());
 }
 
@@ -82,7 +81,6 @@ export async function getGeminiResponse(
   await ele.click();
   return clipboard.readSync();
 }
-
 
 async function main() {
   const wsUrl = await getBrowserWSUrl();
