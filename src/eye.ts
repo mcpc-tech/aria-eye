@@ -23,19 +23,28 @@ export interface EyeEvalProps {
 
 export interface EyeProps {
   platform: { name: "playwright" | "puppeteer" | "native"; page: any };
+  /**
+   * If true, the eye will use LLM to infer elements.
+   */
+  infer?: boolean;
 }
 
 /**
  * AI with eyes - interact with web pages using text/image embeddings.
  */
-export const createEye = async ({ platform }: EyeProps) => {
+export const createEye = async ({ platform, infer = false }: EyeProps) => {
   const { evaluate, evaluateHandle } = getEvaluationAdapter(platform);
   await memory.reset();
   async function syncA11yMemoryFromTree() {
-    const a11yTree = await evaluate(() => {
-      return JSON.parse(
-        window._a11y.ariaSnapshotJSON(document.documentElement, { forAI: true })
-      );
+    const [a11yTree, a11ySnapshot] = await evaluate(() => {
+      return [
+        JSON.parse(
+          window._a11y.ariaSnapshotJSON(document.documentElement, {
+            forAI: true,
+          })
+        ),
+        window._a11y.ariaSnapshot(document.documentElement, { forAI: true }),
+      ];
     });
     const rawResults = (
       await memory.getAll({
@@ -69,18 +78,23 @@ export const createEye = async ({ platform }: EyeProps) => {
     });
 
     // Perform add and delete concurrently, but prioritize add (await add first)
-    const addPromise =
-      needsToBeAddedMemories.length > 0
-        ? memory.add(needsToBeAddedMemories, {
-            infer: false,
-            userId: MEM_USER_ID,
-          })
-        : Promise.resolve();
+    const addPromise = infer
+      ? memory.add([{ role: "user", content: a11ySnapshot }], {
+          infer,
+          userId: MEM_USER_ID,
+        })
+      : needsToBeAddedMemories.length > 0
+      ? memory.add(needsToBeAddedMemories, {
+          infer,
+          userId: MEM_USER_ID,
+        })
+      : Promise.resolve();
 
     const deletePromise =
       needsToBeDeletedMemories.length > 0
         ? Promise.all(
-            needsToBeDeletedMemories.map((mem) => memory.delete(mem.id))
+            // needsToBeDeletedMemories.map((mem) => memory.delete(mem.id))
+            []
           )
         : Promise.resolve();
 
@@ -123,6 +137,7 @@ export const createEye = async ({ platform }: EyeProps) => {
         userId: MEM_USER_ID,
         limit: 10,
       });
+      console.log(`Looking for element: ${target}, results:`, results);
       const element = results?.[0];
       if (element.score! < similarityThreshold) {
         return Promise.reject(
