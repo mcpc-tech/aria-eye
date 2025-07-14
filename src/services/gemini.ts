@@ -44,18 +44,16 @@ export async function selectGeminiModel(
   modelName: string = "gemini-2.5-flash"
 ) {
   await eye
-    .look(
-      `button 2.5 flash, or button Personalization (preview), or button 2.5 Pro`
-    )
+    .look(`A button to select the Gemini model`)
     .then((ele) => ele?.click());
-  await eye.look(`Reasoning, math & code 2.5 Pro`).then((ele) => ele?.click());
+  await eye.look(`Select the model 2.5 Pro for reasoning`).then((ele) => ele?.click());
 }
 
 export async function submitGeminiPrompt(
   eye: Awaited<ReturnType<typeof createEye>>,
   prompt: string
 ) {
-  await eye.look("textbox Enter a prompt here").then(async (ele) => {
+  await eye.look("A input box to enter a prompt").then(async (ele) => {
     if (ele) {
       await ele.evaluate((el, value) => {
         (el as HTMLInputElement).innerText = value;

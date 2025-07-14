@@ -24,63 +24,19 @@ export const genArgsByPlatform = <P>(platform: EyeProps["platform"]) => {
 
 /**
  * Parses a prompt string to extract accessibility properties.
- *
- * The prompt string format is:
- * role ["name"] [attribute1] [attribute2=value]...
- *
- * @param prompt - The prompt string to parse.
- * @returns An object containing the parsed properties.
  */
 export const parsePrompt = (prompt: string) => {
-  // The prompt can have a value part after a colon (e.g., "listitem: some text"),
-  // which represents children and should be ignored for parsing the node's own properties.
-  const propsString = prompt.split(":")[0].trim();
-
-  // The final object to store parsed properties.
   const props: Record<string, string | boolean | number> = {};
-
-  // Regex to capture the role (e.g., "button") and an optional quoted name (e.g., "Submit").
-  // It captures: 1=role, 3=name.
-  const roleAndNameRegex = /^([a-zA-Z]+)(\s"((?:[^"\\]|\\.)*)")?/;
-  const roleAndNameMatch = propsString.match(roleAndNameRegex);
-
-  if (!roleAndNameMatch) {
-    return {}; // Return empty object if the basic format isn't met.
+  const attributesMatch = prompt.match(/Attributes:\s*({.*})/);
+  if (attributesMatch) {
+    try {
+      const json = JSON.parse(attributesMatch[1]);
+      Object.assign(props, json);
+    } catch (e) {}
+    return props;
   }
 
-  // The role is the first part of the string.
-  props.role = roleAndNameMatch[1];
-
-  // The name is the content within the quotes, if it exists.
-  if (roleAndNameMatch[3]) {
-    props.name = roleAndNameMatch[3];
-  }
-
-  // Regex to find all attributes in square brackets, e.g., '[disabled]', '[level=2]', '[checked=mixed]'.
-  // It captures: 1=key, 2=value. The 'g' flag ensures all attributes are found.
-  const attributeRegex = /\[([^=\]]+)(?:=([^\]]+))?\]/g;
-
-  let match;
-  // Loop through all attribute matches found in the string.
-  while ((match = attributeRegex.exec(propsString)) !== null) {
-    const key = match[1];
-    let value: string | boolean | number = match[2];
-
-    if (value === undefined) {
-      // It's a boolean attribute if no value is present (e.g., "[disabled]").
-      value = true;
-    } else {
-      // If a value exists, try to convert it to a number.
-      const numValue = Number(value);
-      if (!isNaN(numValue)) {
-        value = numValue;
-      }
-      // Otherwise, it remains a string (e.g., "mixed" in "[checked=mixed]").
-    }
-    props[key] = value;
-  }
-
-  return props;
+  return {};
 };
 
 export const a11yRefSelect = async (

@@ -9,7 +9,9 @@ import {
 } from "@isomorphic/dom";
 import { ElementHandle } from "puppeteer";
 
-const MEM_USER_ID = "eye-client";
+const MEM_USER_ID = `${"eye-client"}_${Math.random()
+  .toString(36)
+  .substring(2, 15)}`;
 
 export type EvaluateFunction = <T extends any, Arg>(
   pageFunction: (arg?: Arg) => T | Promise<T>,
@@ -60,10 +62,10 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
     const ariaList = flattenTreeDFS(a11yTree?.[0]);
     const ariaMemories = ariaList
       .filter(({ ref }) => Boolean(ref))
-      .map(({ prompt }) => {
+      .map(({ descriptivePrompt }) => {
         return {
           role: "user",
-          content: prompt,
+          content: descriptivePrompt,
         };
       });
 
@@ -108,12 +110,7 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
         )
       : Promise.resolve();
 
-    console.log(await Promise.all([addPromise, deletePromise]));
-
-    if (needsToBeAddedMemories.length > 0) {
-    }
-    if (needsToBeDeletedMemories.length > 0) {
-    }
+    await Promise.all([addPromise, deletePromise]);
   }
 
   const blink = async (duration: number = 400) =>
@@ -134,14 +131,13 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
      */
     async look(
       target: string,
-      similarityThreshold: number = 0.5
+      similarityThreshold: number = 0
     ): Promise<ElementHandle> {
       await setup();
       const { results } = await memory.search(target, {
         userId: MEM_USER_ID,
         limit: 10,
       });
-      console.log(`Looking for element: ${target}, results:`, results);
       const element = results?.[0];
       if (element?.score! < similarityThreshold) {
         return Promise.reject(
@@ -152,9 +148,8 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
           )}`
         );
       }
-
+      console.log(`Looking for element: ${target}, found:`, element, results);
       const ref = parsePrompt(element?.memory).ref as string;
-      console.log(`Looking for element: ${target}, found:`, ref, element);
       const elementHandle = await a11yRefSelect(
         { evaluate, evaluateHandle },
         ref
@@ -165,7 +160,7 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
     /**
      * Wait for an element matching the description to appear
      */
-    async wait(description: string, similarityThreshold = 0.8) {
+    async wait(description: string, similarityThreshold = 0.5) {
       await setup();
       const results = await waitElementByDescription(setup, description, {
         similarityThreshold,

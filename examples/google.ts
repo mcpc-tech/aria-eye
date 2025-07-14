@@ -24,7 +24,7 @@ async function main() {
     waitUntil: "networkidle2",
   });
 
-  await eye.look("Search combobox").then(async (ele) => {
+  await eye.look("A text input that searches").then(async (ele) => {
     await ele?.type("MCP");
   });
 
@@ -34,11 +34,13 @@ async function main() {
 
   await page.waitForNavigation({ waitUntil: "networkidle2" });
 
-  await eye.look("Model Context Protocol").then((ele) => {
+  await eye.look("a mcp heading with level of 3").then((ele) => {
     return ele?.click();
   });
 
-  await eye.wait("Model Context Protocol Logo");
+  await eye.wait("a mcp logo image").then((ele) => {
+    return ele?.click();
+  });
 
   console.log(await eye.snapshot(true));
 }

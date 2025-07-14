@@ -63,12 +63,12 @@ export function ariaSnapshotJSON(
     return element;
   };
 
-  this._lastAriaSnapshotRender = renderAriaTreeAsJSON(
+  this._lastAriaSnapshotJSONRender = renderAriaTreeAsJSON(
     this._lastAriaSnapshot,
     options
   );
 
-  return this._lastAriaSnapshotRender;
+  return this._lastAriaSnapshotJSONRender;
 }
 
 export { generateAriaTree };

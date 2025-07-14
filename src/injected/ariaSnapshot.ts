@@ -548,9 +548,9 @@ export function renderAriaTree(
 }
 
 /**
- * MODIFIED
- * Renders an Aria tree snapshot as a JSON string, including a 'prompt' property
- * that mirrors the equivalent YAML output from `renderAriaTree`.
+ * Renders an Aria snapshot into a JSON string that includes semantic descriptions.
+ * All logic is encapsulated within this function; it is the single entry point
+ * from an external perspective.
  *
  * @param ariaSnapshot The Aria snapshot to render.
  * @param options Rendering options (mode, forAI).
@@ -566,36 +566,95 @@ export function renderAriaTreeAsJSON(
   const renderString =
     options?.mode === "regex" ? convertToBestGuessRegex : (str: string) => str;
 
+  /**
+   * [Internal Helper Function] Generates a rich, natural-language
+   * description for a single AriaNode.
+   */
+  const generateDescriptivePrompt = (
+    // Signature is unchanged, options is in scope
+    ariaNode: AriaNode,
+    parentContext: string
+  ): string => {
+    const { role, name, checked, disabled, expanded, pressed, selected, ref } =
+      ariaNode;
+    const sentences: Array<string> = [];
+    const renderedName = name ? renderString(name) : "";
+
+    // 1. Core Identity
+    sentences.push(
+      `This is a ${role}${renderedName ? ` named \"${renderedName}\"` : ""}.`
+    );
+
+    // 2. Function/Purpose
+    let purpose = roleUtils.getRolePurpose(role);
+    if (purpose) sentences.push(purpose);
+
+    // 3. Location/Context
+    if (parentContext) {
+      sentences.push(`It is located inside ${parentContext}.`);
+    } else {
+      sentences.push(`It is a top-level element on the page.`);
+    }
+
+    // 4. State
+    const states: Array<string> = [];
+    if (checked !== undefined) states.push(checked ? "checked" : "unchecked");
+    if (expanded !== undefined)
+      states.push(expanded ? "expanded" : "collapsed");
+    if (disabled) states.push("disabled");
+    if (pressed) states.push("pressed");
+    if (selected) states.push("selected");
+
+    if (states.length > 0) {
+      sentences.push(`Currently, its state is ${states.join(" and ")}.`);
+    }
+
+    // 5. Technical Attributes (for AI)
+    const technicalAttrs: Record<string, any> = {};
+    if (ref) technicalAttrs.ref = ref;
+    if (Object.keys(technicalAttrs).length > 0) {
+      sentences.push(`Attributes: ${JSON.stringify(technicalAttrs)}`);
+    }
+
+    return sentences.join(" ");
+  };
+
+  /**
+   * [Internal Recursive Function] Recursively builds the JSON object tree.
+   */
   const buildJsonObject = (
     ariaNode: AriaNode | string,
-    parentAriaNode: AriaNode | null
+    parentContext: string
   ): any => {
-    // Handle text nodes (string type)
+    // Handle text nodes
     if (typeof ariaNode === "string") {
-      if (parentAriaNode && !includeText(parentAriaNode, ariaNode)) {
+      if (!includeText({} as AriaNode, ariaNode)) {
         return null;
       }
       const text = renderString(ariaNode);
       if (text) {
-        // Faithfully replicate the YAML output for the prompt.
         const prompt = "text: " + yamlEscapeValueIfNeeded(text);
-        return { text: text, prompt: prompt };
+        const descriptivePrompt = `This is the text content "${text}" located inside ${parentContext}.`;
+        return {
+          text: text,
+          prompt: prompt,
+          descriptivePrompt: descriptivePrompt,
+        };
       }
       return null;
     }
 
-    // Handle AriaNode (object type)
+    // Handle AriaNode objects
     const jsonNode: any = {
       role: ariaNode.role,
+      descriptivePrompt: generateDescriptivePrompt(ariaNode, parentContext),
     };
 
+    // Populate other properties (name, checked, disabled, etc.)
     if (ariaNode.name) {
       const name = renderString(ariaNode.name);
-      if (name) {
-        jsonNode.name = name;
-      }
+      if (name) jsonNode.name = name;
     }
-
     if (ariaNode.checked !== undefined) jsonNode.checked = ariaNode.checked;
     if (ariaNode.disabled) jsonNode.disabled = ariaNode.disabled;
     if (ariaNode.expanded) jsonNode.expanded = ariaNode.expanded;
@@ -603,12 +662,13 @@ export function renderAriaTreeAsJSON(
     if (ariaNode.pressed !== undefined) jsonNode.pressed = ariaNode.pressed;
     if (ariaNode.selected) jsonNode.selected = ariaNode.selected;
 
+    // AI-related properties
     if (options?.forAI && receivesPointerEvents(ariaNode)) {
       if (ariaNode.ref) jsonNode.ref = ariaNode.ref;
       if (hasPointerCursor(ariaNode)) jsonNode.cursor = "pointer";
     }
 
-    // Generate the YAML-like prompt string for this node.
+    // Generate the YAML-style 'prompt' property
     let key = ariaNode.role;
     if (ariaNode.name && ariaNode.name.length <= 900) {
       const name = renderString(ariaNode.name);
@@ -620,6 +680,8 @@ export function renderAriaTreeAsJSON(
         key += " " + stringifiedName;
       }
     }
+
+    // Append states to the key string
     if (ariaNode.checked === "mixed") key += ` [checked=mixed]`;
     else if (ariaNode.checked === true) key += ` [checked]`;
     if (ariaNode.disabled) key += ` [disabled]`;
@@ -634,9 +696,9 @@ export function renderAriaTreeAsJSON(
       if (ref) key += ` [ref=${ref}]${cursor}`;
     }
 
+    // Prompt assignment logic
     const escapedKey = yamlEscapeKeyIfNeeded(key);
     const hasProps = !!Object.keys(ariaNode.props).length;
-
     if (!ariaNode.children.length && !hasProps) {
       jsonNode.prompt = escapedKey;
     } else if (
@@ -654,16 +716,19 @@ export function renderAriaTreeAsJSON(
       jsonNode.prompt = escapedKey + ":";
     }
 
-    const propsKeys = Object.keys(ariaNode.props);
-    if (propsKeys.length > 0) {
+    // Handle props
+    if (Object.keys(ariaNode.props).length > 0) {
       jsonNode.props = { ...ariaNode.props };
     }
 
+    // Recursively process child nodes
     if (ariaNode.children && ariaNode.children.length > 0) {
+      const childContext = `the ${ariaNode.role}${
+        ariaNode.name ? ` named "${renderString(ariaNode.name)}"` : ""
+      }`;
       const children = ariaNode.children
-        .map((child) => buildJsonObject(child, ariaNode))
+        .map((child) => buildJsonObject(child, childContext))
         .filter((child) => child !== null);
-
       if (children.length > 0) {
         jsonNode.children = children;
       }
@@ -672,17 +737,21 @@ export function renderAriaTreeAsJSON(
     return jsonNode;
   };
 
+  // ------------------- Main Function Logic Entry Point -------------------
+
   const ariaNode = ariaSnapshot.root;
   let resultObject: any;
 
+  // Start recursion from the root node with an empty parent context
   if (ariaNode.role === "fragment" && ariaNode.children) {
     resultObject = ariaNode.children
-      .map((child) => buildJsonObject(child, ariaNode))
+      .map((child) => buildJsonObject(child, ""))
       .filter((child) => child !== null);
   } else {
-    resultObject = buildJsonObject(ariaNode, null);
+    resultObject = buildJsonObject(ariaNode, "");
   }
 
+  // Return the final JSON string
   return JSON.stringify(resultObject, null, 2);
 }
 
