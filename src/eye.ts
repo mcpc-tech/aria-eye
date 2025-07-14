@@ -148,7 +148,7 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
           )}`
         );
       }
-      console.log(`Looking for element: ${target}, found:`, element, results);
+      console.log(`Looking for element: ${target}, found:`, element);
       const ref = parsePrompt(element?.memory).ref as string;
       const elementHandle = await a11yRefSelect(
         { evaluate, evaluateHandle },
