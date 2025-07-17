@@ -26,6 +26,7 @@ export type AriaRole = 'alert' | 'alertdialog' | 'application' | 'article' | 'ba
 
 export type AriaProps = {
   checked?: boolean | 'mixed';
+  clickable?: boolean;
   disabled?: boolean;
   expanded?: boolean;
   level?: number;

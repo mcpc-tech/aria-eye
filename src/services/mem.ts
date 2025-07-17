@@ -1,3 +1,5 @@
+process.env.MEM0_TELEMETRY = "false";
+
 import { Memory } from "mem0ai/oss";
 
 const customPrompt = `
@@ -136,7 +138,7 @@ export const memory = new Memory({
     config: {
       apiKey: process.env.OPENROUTER_API_KEY,
       model: "google/gemini-2.5-flash",
-      baseURL: 'https://openrouter.ai/api/v1',
+      baseURL: "https://openrouter.ai/api/v1",
       // @ts-ignore
       temperature: 0.0,
     },

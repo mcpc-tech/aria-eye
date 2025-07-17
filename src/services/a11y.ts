@@ -1,26 +1,15 @@
 import { fileURLToPath } from "node:url";
 import { URL } from "node:url";
-import * as esbuild from "esbuild";
+import { readFileSync } from "node:fs";
 import { EyeEvalProps, EyeProps } from "eye";
 
 export const injectA11y = (
   evaluate: EyeEvalProps["evaluate"],
   globalName = "_a11y"
 ) => {
-  const injectPath = fileURLToPath(
-    // @ts-ignore
-    new URL("../injected/a11y.ts", import.meta.url)
-  );
-
-  const result = esbuild.buildSync({
-    entryPoints: [injectPath],
-    bundle: true,
-    write: false,
-    format: "iife",
-    globalName,
-  });
-
-  const a11yBundle = result.outputFiles[0].text;
+  // Load the pre-built injected script
+  const distPath = new URL("../../dist/injected/a11y.js", "file://" + __filename);
+  const a11yBundle = readFileSync(fileURLToPath(distPath), 'utf-8');
 
   return evaluate(
     ({ a11yBundle, globalName }) => {

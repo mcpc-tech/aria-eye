@@ -26,7 +26,8 @@ export function ariaSnapshot(
     return dfs(this._lastAriaSnapshot.root, ref)?.element;
   };
   this._getElementByRef = (ref) => {
-    return dfs(this._lastAriaSnapshot.root, ref)?.element;
+    const element = this._lastAriaSnapshot?.elements.get(ref);
+    return element;
   };
 
   this._lastAriaSnapshotRender = renderAriaTree(

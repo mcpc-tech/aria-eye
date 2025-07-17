@@ -28,6 +28,7 @@ import {
 } from "./domUtils";
 import * as roleUtils from "./roleUtils";
 import { yamlEscapeKeyIfNeeded, yamlEscapeValueIfNeeded } from "./yaml";
+import { BROWSER_ACTIONS } from "../utils/isomorphic/browserActions";
 
 import type {
   AriaProps,
@@ -253,6 +254,23 @@ function toAriaNode(
 
   if (roleUtils.kAriaSelectedRoles.includes(role))
     result.selected = roleUtils.getAriaSelected(element);
+
+  // Set clickable property based on element's ability to receive pointer events and role
+  result.clickable =
+    receivesPointerEvents &&
+    ([
+      "button",
+      "link",
+      "menuitem",
+      "tab",
+      "option",
+      "checkbox",
+      "radio",
+      "switch",
+    ].includes(role) ||
+      element.hasAttribute("onclick") ||
+      (element.hasAttribute("role") &&
+        ["button", "link"].includes(element.getAttribute("role") || "")));
 
   if (
     element instanceof HTMLInputElement ||
@@ -500,6 +518,7 @@ export function renderAriaTree(
     }
     if (ariaNode.checked === "mixed") key += ` [checked=mixed]`;
     if (ariaNode.checked === true) key += ` [checked]`;
+    if (ariaNode.clickable) key += ` [clickable]`;
     if (ariaNode.disabled) key += ` [disabled]`;
     if (ariaNode.expanded) key += ` [expanded]`;
     if (ariaNode.level) key += ` [level=${ariaNode.level}]`;
@@ -567,6 +586,105 @@ export function renderAriaTreeAsJSON(
     options?.mode === "regex" ? convertToBestGuessRegex : (str: string) => str;
 
   /**
+   * [Internal Helper Function] Generates supported actions for an actionable element
+   * Based on actual browser actions from action.ts and element properties
+   */
+  const generateSupportedActions = (ariaNode: AriaNode): string[] => {
+    const actions: string[] = [];
+    const {
+      role,
+      name,
+      checked,
+      clickable,
+      disabled,
+      expanded,
+      pressed,
+      selected,
+      ref,
+    } = ariaNode;
+
+    // Only generate actions for elements that receive pointer events and have refs
+    if (!receivesPointerEvents(ariaNode) || !ref) {
+      return actions;
+    }
+
+    // Basic actions available for most interactive elements
+    if (clickable) {
+      actions.push(BROWSER_ACTIONS.CLICK);
+    }
+    actions.push(BROWSER_ACTIONS.HOVER);
+
+    // Role-specific actions based on element capabilities
+    switch (role) {
+      case "textbox":
+      case "searchbox":
+        actions.push(BROWSER_ACTIONS.TYPE);
+        break;
+
+      case "combobox":
+        // Comboboxes support both typing and option selection
+        actions.push(BROWSER_ACTIONS.TYPE, BROWSER_ACTIONS.SELECT_OPTION);
+        break;
+
+      case "button":
+        // Buttons can be clicked and can receive key presses
+        actions.push(BROWSER_ACTIONS.PRESS_KEY);
+        break;
+
+      case "checkbox":
+      case "radio":
+      case "switch":
+        // These elements can be toggled via click, state-aware
+        if (checked !== undefined) {
+          // Element supports checked state
+          actions.push(BROWSER_ACTIONS.CLICK);
+        }
+        break;
+
+      case "link":
+        // Links are clickable and may support drag operations
+        actions.push(BROWSER_ACTIONS.DRAG);
+        break;
+
+      case "listbox":
+      case "option":
+        actions.push(BROWSER_ACTIONS.SELECT_OPTION);
+        break;
+
+      case "slider":
+      case "spinbutton":
+        // Sliders can be interacted with via type or click
+        actions.push(BROWSER_ACTIONS.TYPE);
+        break;
+
+      case "menuitem":
+      case "tab":
+        // Menu items and tabs can be activated via click or key press
+        actions.push(BROWSER_ACTIONS.PRESS_KEY);
+        break;
+    }
+
+    // Conditional actions based on element state/properties
+    if (disabled) {
+      // Disabled elements cannot be interacted with (except hover)
+      return [BROWSER_ACTIONS.HOVER];
+    }
+
+    // File input detection (usually has type="file" in the actual DOM)
+    if (role === "textbox" && name && name.toLowerCase().includes("file")) {
+      actions.push(BROWSER_ACTIONS.FILE_UPLOAD);
+    }
+
+    // All interactive elements can potentially be drag sources
+    if (actions.length > 0) {
+      actions.push(BROWSER_ACTIONS.DRAG);
+    }
+
+    // Remove duplicates and return
+    return [...new Set(actions)];
+  };
+
+  /**
    * [Internal Helper Function] Generates a rich, natural-language
    * description for a single AriaNode.
    */
@@ -575,8 +693,17 @@ export function renderAriaTreeAsJSON(
     ariaNode: AriaNode,
     parentContext: string
   ): string => {
-    const { role, name, checked, disabled, expanded, pressed, selected, ref } =
-      ariaNode;
+    const {
+      role,
+      name,
+      checked,
+      clickable,
+      disabled,
+      expanded,
+      pressed,
+      selected,
+      ref,
+    } = ariaNode;
     const sentences: Array<string> = [];
     const renderedName = name ? renderString(name) : "";
 
@@ -599,6 +726,8 @@ export function renderAriaTreeAsJSON(
     // 4. State
     const states: Array<string> = [];
     if (checked !== undefined) states.push(checked ? "checked" : "unchecked");
+    if (clickable !== undefined)
+      states.push(clickable ? "clickable" : "not clickable");
     if (expanded !== undefined)
       states.push(expanded ? "expanded" : "collapsed");
     if (disabled) states.push("disabled");
@@ -648,7 +777,17 @@ export function renderAriaTreeAsJSON(
     const jsonNode: any = {
       role: ariaNode.role,
       descriptivePrompt: generateDescriptivePrompt(ariaNode, parentContext),
+      name: ariaNode.name,
+      props: { ...ariaNode.props },
     };
+
+    // Add supported actions for interactive elements
+    if (receivesPointerEvents(ariaNode)) {
+      const supportedActions = generateSupportedActions(ariaNode);
+      if (supportedActions.length > 0) {
+        jsonNode.supportedActions = supportedActions;
+      }
+    }
 
     // Populate other properties (name, checked, disabled, etc.)
     if (ariaNode.name) {
@@ -656,6 +795,8 @@ export function renderAriaTreeAsJSON(
       if (name) jsonNode.name = name;
     }
     if (ariaNode.checked !== undefined) jsonNode.checked = ariaNode.checked;
+    if (ariaNode.clickable !== undefined)
+      jsonNode.clickable = ariaNode.clickable;
     if (ariaNode.disabled) jsonNode.disabled = ariaNode.disabled;
     if (ariaNode.expanded) jsonNode.expanded = ariaNode.expanded;
     if (ariaNode.level) jsonNode.level = ariaNode.level;
@@ -684,6 +825,7 @@ export function renderAriaTreeAsJSON(
     // Append states to the key string
     if (ariaNode.checked === "mixed") key += ` [checked=mixed]`;
     else if (ariaNode.checked === true) key += ` [checked]`;
+    if (ariaNode.clickable) key += ` [clickable]`;
     if (ariaNode.disabled) key += ` [disabled]`;
     if (ariaNode.expanded) key += ` [expanded]`;
     if (ariaNode.level) key += ` [level=${ariaNode.level}]`;
