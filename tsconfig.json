@@ -6,7 +6,7 @@
       "@isomorphic/*": ["./utils/isomorphic/*"]
     },
     "target": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "typeRoots": ["src/types", "./node_modules/@types"],
     "types": ["global"],
     "esModuleInterop": true,

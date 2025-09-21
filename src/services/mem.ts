@@ -108,7 +108,9 @@ export const memory = new Memory({
   embedder: {
     provider: "ollama",
     config: {
-      model: "nomic-embed-text:latest",
+      url: process.env.OLLAMA_URL || "http://localhost:11434",
+      // model: "nomic-embed-text:latest",
+      model: "dengcao/Qwen3-Embedding-0.6B:Q8_0",
     },
   },
   // embedder: {
@@ -122,7 +124,9 @@ export const memory = new Memory({
     provider: "memory",
     config: {
       collectionName: "memories",
-      dimension: 768,
+      // dimension: 768,
+      /// qwen
+      dimension: 1024,
     },
   },
   // llm: {
