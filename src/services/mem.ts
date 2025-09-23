@@ -1,6 +1,6 @@
 process.env.MEM0_TELEMETRY = "false";
 
-import { Memory } from "mem0ai/oss";
+import { Memory } from "@yaonyan/mem0ai/oss";
 
 const customPrompt = `
 Your task is to process a list of web elements from the 'Input'. Each line in the 'Input' represents a distinct element. You MUST generate a descriptive fact for each line.
