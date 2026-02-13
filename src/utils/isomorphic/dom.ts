@@ -46,7 +46,8 @@ export const a11yRefSelect = async (
 ) => {
   const handle = await evaluateHandle?.((ref) => {
     const element = window._a11y?._getElementByRef(ref);
-    console.log("Selecting element by ref:", ref, element);
+    // Browser context - use native console
+    console.debug("[debug] Selecting element by ref:", ref, element);
     return element;
   }, ref);
 

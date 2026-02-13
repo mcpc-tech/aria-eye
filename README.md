@@ -25,33 +25,3 @@ async function main() {
 }
 main();
 ```
-
-### OpenAI-Compatible API
-
-The server exposes endpoints compatible with OpenAI's API for chat completions and model listing.
-
-#### Start the server
-
-```bash
-npm run server
-```
-
-#### List supported models
-
-```http
-GET /v1/models
-```
-
-#### Chat completion
-
-```http
-POST /v1/chat/completions
-Content-Type: application/json
-
-{
-  "model": "gemini-2.5-flash",
-  "messages": [
-    { "role": "user", "content": "Hello!" }
-  ]
-}
-```

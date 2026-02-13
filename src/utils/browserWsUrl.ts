@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 /**
  * Fetches the WebSocket URL for the browser's remote debugging protocol.
  */
@@ -7,8 +9,8 @@ export async function getBrowserWSUrl(): Promise<string | null> {
     const data = await response.json();
     return data.webSocketDebuggerUrl;
   } catch (e) {
-    console.error(`Error getting WebSocket URL: ${e}`);
-    console.error(
+    logger.error(`Error getting WebSocket URL: ${e}`);
+    logger.error(
       "Make sure Chrome/Chromium is running with --remote-debugging-port=9222"
     );
     return null;

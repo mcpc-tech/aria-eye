@@ -19,6 +19,7 @@ import {
 } from "@isomorphic/dom";
 import { ElementHandle } from "puppeteer";
 import { formatElementContent, createMemoryEntry, ElementContent, extractElementsFromA11yNode } from "@isomorphic/contentFormatter";
+import { logger } from "utils/logger";
 
 const MEM_USER_ID = `${"eye-client"}_${Math.random()
   .toString(36)
@@ -91,7 +92,7 @@ async function findElementAndAction(
 
   const props = parsePrompt(bestMatch.memory);
 
-  console.log(`Acting on element: ${description}, found:`, bestMatch, props);
+  logger.debug(`Acting on element: ${description}, found:`, bestMatch, props);
   const elementDescription = bestMatch.memory || description;
 
   return {
@@ -160,7 +161,7 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
             userId: MEM_USER_ID,
           })
           .then(() =>
-            console.log(
+            logger.debug(
               `Added ${needsToBeAddedMemories.length} new memories for user ${MEM_USER_ID}`
             )
           )
@@ -172,7 +173,7 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
       ? Promise.all(
           needsToBeDeletedMemories.map((mem) => memory.delete(mem.id))
         ).then(() =>
-          console.log(
+          logger.debug(
             `Deleted ${needsToBeDeletedMemories.length} outdated memories for user ${MEM_USER_ID}`
           )
         )
@@ -216,7 +217,7 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
           )}`
         );
       }
-      console.log(`Looking for element: ${target}, found:`, element);
+      logger.debug(`Looking for element: ${target}, found:`, element);
       const ref = parsePrompt(element?.memory).ref as string;
       const elementHandle = await a11yRefSelect(
         { evaluate, evaluateHandle },
@@ -308,7 +309,7 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
       }
 
       // Verify the element exists and is accessible like in look method
-      console.log(
+      logger.debug(
         `Found element for action: ${actionDescription}, score: ${actionInfo.score}, action: ${actionInfo.actionType}, ref: ${ref}`
       );
 
@@ -328,7 +329,7 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
       const lowerDesc = actionDescription.toLowerCase();
 
       // Execute the appropriate action
-      console.log(
+      logger.debug(
         `Executing action: ${actionInfo.actionType} on element with ref: ${ref}`
       );
 
@@ -453,7 +454,7 @@ export const createEye = async ({ platform, infer = false }: EyeProps) => {
             );
           }
 
-          console.log(
+          logger.debug(
             `Found target element for drag: ${targetElementDescription}, score: ${targetElement.score}`
           );
 
@@ -553,7 +554,7 @@ export async function waitElementByDescription(
 
       await new Promise((resolve) => setTimeout(resolve, pollingInterval));
     } catch (error) {
-      console.error("Error while waiting for element:", error);
+      logger.error("Error while waiting for element:", error);
     }
   }
 

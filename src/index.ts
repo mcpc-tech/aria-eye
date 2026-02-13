@@ -6,7 +6,15 @@ try {
   // Silently ignore if patch fails
 }
 
-export * from "./eye";
-export * from "./utils/browserWsUrl";
+// Core
+export { createEye } from "./eye";
+export type { EyeProps, EyeEvalProps, EvaluateFunction } from "./eye";
+
+// Utilities
+export { getBrowserWSUrl } from "./utils/browserWsUrl";
+export { logger, setLogLevel } from "./utils/logger";
+export type { LogLevel, Logger } from "./utils/logger";
+
+// Services
 export * from "./services/action";
 export * from "./services/a11y";

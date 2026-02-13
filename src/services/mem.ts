@@ -109,23 +109,14 @@ export const memory = new Memory({
     provider: "ollama",
     config: {
       url: process.env.OLLAMA_URL || "http://localhost:11434",
-      // model: "nomic-embed-text:latest",
-      model: "dengcao/Qwen3-Embedding-0.6B:Q8_0",
+      model: "bge-m3:latest",
     },
   },
-  // embedder: {
-  //   provider: "openai",
-  //   config: {
-  //     apiKey: process.env.OPENAI_API_KEY,
-  //     model: "text-embedding-3-large",
-  //   },
-  // },
+
   vectorStore: {
     provider: "memory",
     config: {
       collectionName: "memories",
-      // dimension: 768,
-      /// qwen
       dimension: 1024,
     },
   },
@@ -138,23 +129,15 @@ export const memory = new Memory({
   //   },
   // },
   llm: {
-    provider: "openai",
+    provider: "ollama",
     config: {
-      apiKey: process.env.OPENROUTER_API_KEY,
-      model: "google/gemini-2.5-flash",
-      baseURL: "https://openrouter.ai/api/v1",
+      url: process.env.OLLAMA_URL || "http://localhost:11434",
+      model: "qwen3:latest",
       // @ts-ignore
       temperature: 0.0,
     },
   },
-  // llm: {
-  //   provider: "openai_structured",
-  //   config: {
-  //     model: "gpt-4o-2024-08-06",
-  //     apiKey: process.env.OPENAI_API_KEY,
-  //     temperature: 0.0,
-  //   },
-  // },
+
   historyDbPath: "memory.db",
   customPrompt,
   updatePrompt,

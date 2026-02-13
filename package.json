@@ -10,16 +10,17 @@
   },
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "npm run clean && tsup",
-    "browser": "/Applications/Google\\ Chrome\\ Canary.app/Contents/MacOS/Google\\ Chrome\\ Canary --remote-debugging-port=9222 --enable-features=ClipboardRead --user-data-dir=/tmp/chrome_debug > /dev/null 2>&1 &"
+    "build": "pnpm run clean && tsup",
+    "browser": "/Applications/Google\\ Chrome\\ Canary.app/Contents/MacOS/Google\\ Chrome\\ Canary --remote-debugging-port=9222 --enable-features=ClipboardRead --user-data-dir=/tmp/chrome_debug > /dev/null 2>&1 &",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@hono/node-server": "^1.15.0",
-    "@hono/zod-openapi": "^0.19.9",
     "@types/jsdom": "^21.1.7",
+    "vitest": "^3.0.0",
     "axe-core": "^4.10.3",
     "esbuild": "^0.25.6",
     "jsdom": "^26.0.0",
